@@ -9,6 +9,12 @@ import ollama
 import asyncio
 from ollama import AsyncClient
 import time
+import random
+from adafruit_servokit import ServoKit
+kit = ServoKit(channels=16)
+kit.servo[0].angle = random.randint(0, 180)
+kit.servo[1].angle = random.randint(0, 180)
+
 
 def gstreamer_pipeline(
     capture_width=1280,
@@ -52,26 +58,27 @@ def chat(frame):
     in_progress = True
     is_success, buffer = cv2.imencode(".jpg", frame)
     io_buf = io.BytesIO(buffer)
-    response = ollama.generate('llava:7b', 'If you see me, give me a humorous description of me in one sentence. Otherwise, describe the background in one sentence.',
+    response = ollama.generate('llava:7b', 'Is there a person lying on the floor?',
                                images=[io_buf], stream=False, options=dict(num_predict=30))
     message = response['response']
-
     subprocess.run('echo "' + message + '"| piper --model en_US-lessac-medium.onnx --output_file message.wav', shell=True)
-    subprocess.Popen('aplay message.wav', shell=True)
+    subprocess.run('aplay message.wav', shell=True)
 
+    kit.servo[0].angle = random.randint(0, 180)
+    kit.servo[1].angle = random.randint(0, 180)
+    time.sleep(2)
     in_progress = False
 
 while True:
 
+
     check, frame = video.read()
-    if not check:
-        continue
-    cv2.imshow("Ollava", frame)
-
-
     if not in_progress:
         threading.Thread(target=chat, args=(frame, )).start()
 
+    if not check:
+        continue
+    cv2.imshow("Ollava", frame)
 
     key = cv2.waitKey(1)
 
